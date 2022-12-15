@@ -11,6 +11,7 @@
 #define DOWN_DIR D6
 #define echoPin D4
 #define trigPin D1
+#define MOVE_FACTOR 1
 
 
 int calc_dist(int* data) {
@@ -29,12 +30,12 @@ int calc_dist(int* data) {
     }
     std::sort(temp2, temp2+array_len);
     Serial.println("Array De Dados:");
-    /*
+    
     for (int i=0; i<array_len; i++) {
         Serial.print(temp2[i]);
         Serial.print(" ");
     }
-    */
+    
     if (array_len%2==1) return temp2[(int)array_len/2];
     else return (temp2[(array_len/2)-1]+temp2[array_len/2])/2;
 }
@@ -150,6 +151,8 @@ int data[500];
 
 int m_dist;
 int center_target;
+bool direction = false;
+int dsequence = 0;
 
 
 
@@ -194,11 +197,13 @@ void loop()
     for (int i=0; millis()-myTime < 44; i++) {
         if (i>499) break;
         digitalWrite(trigPin, LOW);
-        delayMicroseconds(2);
+        delayMicroseconds(5);
         digitalWrite(trigPin, HIGH);
         delayMicroseconds(10);
         digitalWrite(trigPin, LOW);
+        noInterrupts();
         duration = pulseIn(echoPin, HIGH, 6000);
+        interrupts();
         distance = duration * 0.034 / 2;
         data[i] = distance;
 
@@ -237,10 +242,26 @@ void loop()
         Serial.println(center_target);
         //*/
         if (plat_esq[2] != center_target) {
-            if (plat_esq[2] > center_target) move_up(plat_esq, aux, 1, ball);
-            else move_down(plat_esq, aux, 1, ball);
+            if (plat_esq[2] > center_target) {
+                if (!direction) dsequence = 0;
+                direction = true;
+            }
+            else {
+                if (direction) dsequence = 0;
+                direction = false;
+            }
+            dsequence++;
         }
+        //
+        //
     }
+
+    if (dsequence > MOVE_FACTOR) {
+        if (direction) move_up(plat_esq, aux, 1, ball);
+        else move_down(plat_esq, aux, 1, ball);
+        dsequence = 0;
+    }
+
 
     if (!(upesq && downesq)) {
         if (upesq) move_up(plat_esq, aux, 1, ball);
